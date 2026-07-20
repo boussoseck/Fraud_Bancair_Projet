@@ -218,6 +218,13 @@ Projet académique réalisé dans le cadre du cours de **Machine Learning**.
 
 ---
 
+## Déploiement
+
+Application disponible en ligne :
+
+https://fraudbancairprojet-xqvhyk5qjnjz47a7rcggbt.streamlit.app/
+
+---
 # Licence
 
 Ce projet est destiné à un usage pédagogique et académique.
