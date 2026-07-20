@@ -1,0 +1,53 @@
+# ======================
+# Environnement Python
+# ======================
+
+venv/
+env/
+.venv/
+
+
+# ======================
+# Cache Python
+# ======================
+
+__pycache__/
+*.pyc
+*.pyo
+
+
+# ======================
+# Configuration VS Code
+# ======================
+
+.vscode/
+
+
+# ======================
+# Fichiers système
+# ======================
+
+.DS_Store
+Thumbs.db
+
+
+# ======================
+# Fichiers temporaires
+# ======================
+
+*.log
+*.tmp
+
+
+# ======================
+# Jupyter Notebook
+# ======================
+
+.ipynb_checkpoints/
+
+
+# ======================
+# Variables secrètes
+# ======================
+
+.env
