@@ -16,7 +16,7 @@ st.set_page_config(
     page_title="Détection de fraude bancaire",
     page_icon="🏦",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 COULEUR_NORMAL = "#2A9D8F"
@@ -60,7 +60,81 @@ CHEMIN_COLONNES = "model/feature_columns.pkl"
 
 
 # ==================================================
-# 2. CHARGEMENT DU MODÈLE ET DES DONNÉES
+# 2. STYLE GLOBAL (CSS)
+# ==================================================
+# Tout le style visuel (police, cartes, onglets, en-tête) est centralisé ici
+# pour que l'app reste cohérente, claire et alignée sur toutes les pages.
+
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+html, body, [class*="css"], .stMarkdown, .stMetric, .stDataFrame {
+    font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* Fond général + largeur de la page */
+.stApp { background-color: #F6F7FB; }
+.main .block-container {
+    padding-top: 1.2rem;
+    padding-bottom: 3rem;
+    max-width: 1320px;
+}
+
+/* Masquer les éléments par défaut de Streamlit qui alourdissent l'UI */
+#MainMenu { visibility: hidden; }
+footer { visibility: hidden; }
+
+/* Titres de section homogènes */
+h2, h3 {
+    color: #111827;
+    font-weight: 700 !important;
+}
+.stCaption, p { color: #6B7280; }
+
+/* Onglets = barre de navigation principale (comme dans la maquette) */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 6px;
+    border-bottom: 1px solid #E5E9F0;
+    margin-bottom: 22px;
+}
+.stTabs [data-baseweb="tab"] {
+    height: 44px;
+    padding: 0 20px;
+    border-radius: 10px 10px 0 0;
+    font-weight: 600;
+    font-size: 14.5px;
+    color: #6B7280;
+    background-color: transparent;
+}
+.stTabs [aria-selected="true"] {
+    background-color: #EEF2FB !important;
+    color: #1B2A4A !important;
+    border-bottom: 3px solid #1B2A4A;
+}
+
+/* Champs de saisie plus arrondis et homogènes */
+div[data-baseweb="select"] > div, .stNumberInput input, .stDateInput input, .stTimeInput input {
+    border-radius: 10px !important;
+}
+
+/* Boutons */
+.stButton > button, .stDownloadButton > button {
+    border-radius: 10px;
+    font-weight: 600;
+    padding: 0.6rem 1.2rem;
+}
+
+/* Cartes / conteneurs (expander, dataframe) plus doux */
+.stDataFrame, .stExpander {
+    border-radius: 12px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+# ==================================================
+# 3. CHARGEMENT DU MODÈLE ET DES DONNÉES
 # ==================================================
 #
 # Le notebook sauvegarde 4 artefacts distincts (pas un Pipeline scikit-learn) :
@@ -112,7 +186,7 @@ status_options = (
 
 
 # ==================================================
-# 3. FONCTIONS UTILITAIRES
+# 4. FONCTIONS UTILITAIRES
 # ==================================================
 
 def encoder_valeur(nom_colonne, valeur):
@@ -202,32 +276,59 @@ def predire(X):
     return predictions, probabilites, classes
 
 
-def carte_kpi(colonne, titre, valeur, sous_titre=None, couleur=COULEUR_PRIMAIRE):
-    """Affiche une carte KPI stylisée dans une colonne Streamlit donnée."""
+def render_html(html):
+    """Affiche du HTML brut via st.markdown en supprimant toute indentation.
+    Indispensable : Markdown interprète les lignes indentées de 4 espaces ou
+    plus comme un bloc de code, ce qui affichait des rectangles noirs avec
+    les balises visibles (ex. `</div>`) au lieu de faire le rendu du HTML."""
+    lignes_nettoyees = "\n".join(ligne.strip() for ligne in html.strip().splitlines())
+    st.markdown(lignes_nettoyees, unsafe_allow_html=True)
+
+
+def styliser_figure(fig):
+    """Applique une mise en forme commune à tous les graphiques Plotly :
+    fond blanc et texte suffisamment foncé/contrasté pour rester lisible
+    (axes, légendes, titres), quel que soit le thème de l'utilisateur."""
+    fig.update_layout(
+        font=dict(family="Inter, sans-serif", color="#374151", size=13),
+        paper_bgcolor="white",
+        plot_bgcolor="white",
+        legend=dict(font=dict(color="#374151", size=12)),
+        title=dict(font=dict(color="#111827", size=14)),
+    )
+    fig.update_xaxes(
+        color="#374151", tickfont=dict(color="#374151"),
+        title_font=dict(color="#374151"),
+        gridcolor="#EEF0F4", linecolor="#D1D5DB", zerolinecolor="#E5E7EB"
+    )
+    fig.update_yaxes(
+        color="#374151", tickfont=dict(color="#374151"),
+        title_font=dict(color="#374151"),
+        gridcolor="#EEF0F4", linecolor="#D1D5DB", zerolinecolor="#E5E7EB"
+    )
+    fig.update_traces(textfont_color="#111827", selector=dict(type="bar"))
+    return fig
+
+
+def carte_kpi(colonne, titre, valeur, sous_titre=None, couleur=COULEUR_PRIMAIRE,
+              icone="📄", couleur_icone="#EEF2FB"):
+    """Affiche une carte KPI stylisée (icône, titre, valeur, sous-titre)
+    dans une colonne Streamlit donnée — même esprit visuel que la maquette."""
     with colonne:
-        st.markdown(
-            f"""
-            <div style="
-                background-color:white;
-                border:1px solid #E5E9F0;
-                border-radius:12px;
-                padding:18px 20px;
-                box-shadow:0 2px 6px rgba(0,0,0,0.05);
-            ">
-                <div style="color:#6B7280; font-size:13px; font-weight:600;
-                            text-transform:uppercase; letter-spacing:0.5px;">
-                    {titre}
+        render_html(f"""
+            <div style="background-color:white; border:1px solid #E5E9F0; border-radius:14px;
+                        padding:18px 20px; box-shadow:0 2px 6px rgba(0,0,0,0.05); height:118px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div style="color:#6B7280; font-size:12.5px; font-weight:700;
+                                text-transform:uppercase; letter-spacing:0.5px;">{titre}</div>
+                    <div style="width:34px; height:34px; border-radius:9px; background:{couleur_icone};
+                                display:flex; align-items:center; justify-content:center;
+                                font-size:16px; flex-shrink:0;">{icone}</div>
                 </div>
-                <div style="color:{couleur}; font-size:32px; font-weight:700; margin-top:4px;">
-                    {valeur}
-                </div>
-                <div style="color:#9CA3AF; font-size:12px; margin-top:2px;">
-                    {sous_titre or ""}
-                </div>
+                <div style="color:{couleur}; font-size:29px; font-weight:800; margin-top:6px; line-height:1.1;">{valeur}</div>
+                <div style="color:#9CA3AF; font-size:12px; margin-top:3px;">{sous_titre or ""}</div>
             </div>
-            """,
-            unsafe_allow_html=True
-        )
+        """)
 
 
 def jauge_risque(probabilite_fraude):
@@ -256,47 +357,68 @@ def jauge_risque(probabilite_fraude):
     return fig
 
 
-# ==================================================
-# 4. BARRE LATÉRALE — NAVIGATION
-# ==================================================
+def section_titre(icone, titre, sous_titre=None):
+    """Petit en-tête de section homogène (icône + titre + sous-titre gris)."""
+    sous_titre_html = (
+        f'<div style="font-size:12.5px; color:#9CA3AF; margin-top:2px;">{sous_titre}</div>'
+        if sous_titre else ""
+    )
+    render_html(f"""
+        <div style="margin: 4px 0 14px 0;">
+            <div style="font-size:15px; font-weight:700; color:#111827;">{icone} {titre}</div>
+            {sous_titre_html}
+        </div>
+    """)
 
-st.sidebar.markdown("## 🏦 Détection de fraude")
-st.sidebar.caption("Application de scoring des transactions bancaires")
-st.sidebar.divider()
 
-page = st.sidebar.radio(
-    "Navigation",
-    [
-        "📊 Tableau de bord",
-        "🔍 Transaction unique",
-        "📁 Fichier CSV",
-        "🧪 Performance du modèle",
-    ],
-    label_visibility="collapsed"
+# ==================================================
+# 5. EN-TÊTE DE L'APPLICATION
+# ==================================================
+# Bandeau clair en haut de page : identité de l'app + statut du modèle.
+# Remplace le titre brut + la navigation en barre latérale par un ensemble
+# plus "produit", aligné sur la maquette (icône, titre, sous-titre, badge).
+
+date_dispo = ""
+if df_historique is not None and df_historique["Date"].notna().any():
+    date_min = df_historique["Date"].min().strftime("%d/%m/%Y")
+    date_max = df_historique["Date"].max().strftime("%d/%m/%Y")
+    date_dispo = f"{date_min} → {date_max}"
+
+sous_texte_entete = f"Scoring des transactions · Random Forest · {date_dispo if date_dispo else 'Application pédagogique'}"
+
+render_html(f"""
+    <div style="display:flex; justify-content:space-between; align-items:center; background:white;
+                border:1px solid #E5E9F0; border-radius:16px; padding:16px 22px; margin-bottom:22px;
+                box-shadow:0 2px 6px rgba(0,0,0,0.04);">
+        <div style="display:flex; align-items:center; gap:14px;">
+            <div style="width:46px; height:46px; border-radius:12px; background:{COULEUR_PRIMAIRE};
+                        display:flex; align-items:center; justify-content:center; font-size:22px;">🏦</div>
+            <div>
+                <div style="font-size:19px; font-weight:800; color:#111827;">Détection de fraude bancaire</div>
+                <div style="font-size:13px; color:#6B7280; margin-top:1px;">{sous_texte_entete}</div>
+            </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; background:#F3F4F6; padding:7px 16px;
+                    border-radius:20px; font-size:13px; font-weight:600; color:#374151;">
+            <span style="width:8px; height:8px; background:#22C55E; border-radius:50%; display:inline-block;"></span>
+            Modèle chargé
+        </div>
+    </div>
+""")
+
+onglet_dashboard, onglet_transaction, onglet_csv, onglet_perf = st.tabs(
+    ["📊  Tableau de bord", "🔍  Transaction unique", "📁  Fichier CSV", "🧪  Performance du modèle"]
 )
 
-st.sidebar.divider()
-st.sidebar.info(
-    "Application pédagogique réalisée avec "
-    "Python, scikit-learn et Streamlit."
-)
-
 
 # ==================================================
-# 5. PAGE — TABLEAU DE BORD
+# 6. ONGLET — TABLEAU DE BORD
 # ==================================================
 
-if page == "📊 Tableau de bord":
-
-    st.title("📊 Tableau de bord des transactions")
+with onglet_dashboard:
 
     if df_historique is None:
-        # st.warning(
-        #    f"Aucune donnée historique trouvée à l'emplacement `{CHEMIN_DONNEES_HISTORIQUES}`. "
-        #    "Déposez le fichier à cet endroit pour activer le tableau de bord, "
-        #    "ou importez-le ci-dessous."
-        #)
-        fichier_dashboard = st.file_uploader("Importer un jeu de données  (CSV)", type=["csv"])
+        fichier_dashboard = st.file_uploader("Importer un jeu de données (CSV)", type=["csv"])
         if fichier_dashboard is not None:
             df_historique = pd.read_csv(fichier_dashboard, sep=None, engine="python")
             if "Date" in df_historique.columns:
@@ -334,21 +456,26 @@ if page == "📊 Tableau de bord":
             df_filtre["Localisation"].value_counts().idxmax()
             if total else "—"
         )
+        nb_villes = df_filtre["Localisation"].nunique() if total else 0
 
         c1, c2, c3, c4 = st.columns(4)
-        carte_kpi(c1, "Transactions", f"{total:,}".replace(",", " "))
-        carte_kpi(c2, "Taux de fraude", f"{taux_fraude:.1f} %", couleur=COULEUR_FRAUDE)
-        carte_kpi(c3, "Montant moyen", f"{montant_moyen:,.0f} FCFA".replace(",", " "))
-        carte_kpi(c4, "Ville la plus active", ville_top)
+        carte_kpi(c1, "Transactions", f"{total:,}".replace(",", " "),
+                  sous_titre=date_dispo, icone="📄", couleur_icone="#E9EEFB")
+        carte_kpi(c2, "Fraudes", f"{nb_fraude:,}".replace(",", " "),
+                  sous_titre=f"{taux_fraude:.1f} % du total", couleur=COULEUR_FRAUDE,
+                  icone="⚠️", couleur_icone="#FDECEC")
+        carte_kpi(c3, "Ville la plus active", ville_top,
+                  sous_titre=f"{nb_villes} villes couvertes", icone="📍", couleur_icone="#F1EAFB")
+        carte_kpi(c4, "Montant moyen", f"{montant_moyen:,.0f} FCFA".replace(",", " "),
+                  sous_titre="par transaction", icone="💳", couleur_icone="#E7F7F3")
 
-        st.write("")
         st.write("")
 
         # ---------- Répartition Target + évolution temporelle ----------
         col_gauche, col_droite = st.columns([1, 1.4])
 
         with col_gauche:
-            st.subheader("Répartition des classes")
+            section_titre("🥯", "Répartition des transactions", "Étiquette attribuée à chaque opération")
             repartition = df_filtre["Target"].value_counts().reset_index()
             repartition.columns = ["Target", "Nombre"]
             fig_donut = px.pie(
@@ -356,11 +483,12 @@ if page == "📊 Tableau de bord":
                 color="Target", color_discrete_map=PALETTE_TARGET
             )
             fig_donut.update_traces(textinfo="percent+label")
-            fig_donut.update_layout(showlegend=False, margin=dict(l=10, r=10, t=10, b=10), height=340)
-            st.plotly_chart(fig_donut, use_container_width=True)
+            fig_donut.update_layout(showlegend=False, margin=dict(l=10, r=10, t=10, b=10), height=320,
+                                     paper_bgcolor="white")
+            st.plotly_chart(styliser_figure(fig_donut), use_container_width=True)
 
         with col_droite:
-            st.subheader("Évolution des transactions dans le temps")
+            section_titre("📈", "Évolution des transactions dans le temps")
             if df_filtre["Date"].notna().any():
                 df_temps = (
                     df_filtre.dropna(subset=["Date"])
@@ -371,8 +499,9 @@ if page == "📊 Tableau de bord":
                     df_temps, x="Mois", y="Nombre", color="Target",
                     color_discrete_map=PALETTE_TARGET, markers=True
                 )
-                fig_ligne.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=340, legend_title="")
-                st.plotly_chart(fig_ligne, use_container_width=True)
+                fig_ligne.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=320, legend_title="",
+                                         paper_bgcolor="white", plot_bgcolor="white")
+                st.plotly_chart(styliser_figure(fig_ligne), use_container_width=True)
             else:
                 st.info("Pas de dates exploitables dans les données filtrées.")
 
@@ -380,33 +509,35 @@ if page == "📊 Tableau de bord":
         col_g2, col_d2 = st.columns([1, 1.4])
 
         with col_g2:
-            st.subheader("Montant selon la classe")
+            section_titre("💰", "Montant selon la classe")
             fig_box = px.box(
                 df_filtre, x="Target", y="Montant", color="Target",
                 color_discrete_map=PALETTE_TARGET, points=False
             )
-            fig_box.update_layout(showlegend=False, margin=dict(l=10, r=10, t=10, b=10), height=340)
+            fig_box.update_layout(showlegend=False, margin=dict(l=10, r=10, t=10, b=10), height=320,
+                                   paper_bgcolor="white", plot_bgcolor="white")
             fig_box.update_yaxes(type="log", title="Montant (échelle log)")
-            st.plotly_chart(fig_box, use_container_width=True)
+            st.plotly_chart(styliser_figure(fig_box), use_container_width=True)
 
         with col_d2:
-            st.subheader("Top 10 des localisations")
+            section_titre("📍", "Top 10 des localisations", "Nombre de transactions par ville")
             top_villes = (
                 df_filtre["Localisation"].value_counts().head(10).sort_values().reset_index()
             )
             top_villes.columns = ["Localisation", "Nombre"]
             fig_bar = px.bar(
                 top_villes, x="Nombre", y="Localisation", orientation="h",
-                color_discrete_sequence=[COULEUR_PRIMAIRE]
+                color_discrete_sequence=[COULEUR_PRIMAIRE], text="Nombre"
             )
-            fig_bar.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=340)
-            st.plotly_chart(fig_bar, use_container_width=True)
+            fig_bar.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=320,
+                                   paper_bgcolor="white", plot_bgcolor="white")
+            st.plotly_chart(styliser_figure(fig_bar), use_container_width=True)
 
         # ---------- Type / statut ----------
         col_g3, col_d3 = st.columns(2)
 
         with col_g3:
-            st.subheader("Taux de fraude par type de transaction")
+            section_titre("🏷️", "Taux de fraude par type de transaction")
             taux_type = (
                 df_filtre.assign(est_fraude=(df_filtre["Target"] == "Fraude").astype(int))
                 .groupby("Type de transaction")["est_fraude"].mean().mul(100).sort_values(ascending=False)
@@ -416,11 +547,12 @@ if page == "📊 Tableau de bord":
                 taux_type, x="Type de transaction", y="est_fraude",
                 color_discrete_sequence=[COULEUR_FRAUDE]
             )
-            fig_type.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=320, yaxis_title="Taux de fraude (%)")
-            st.plotly_chart(fig_type, use_container_width=True)
+            fig_type.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=300, yaxis_title="Taux de fraude (%)",
+                                    paper_bgcolor="white", plot_bgcolor="white")
+            st.plotly_chart(styliser_figure(fig_type), use_container_width=True)
 
         with col_d3:
-            st.subheader("Statut des opérations par classe")
+            section_titre("✅", "Statut des opérations par classe")
             df_statut = (
                 df_filtre.groupby(["Status operation", "Target"]).size().reset_index(name="Nombre")
             )
@@ -428,20 +560,19 @@ if page == "📊 Tableau de bord":
                 df_statut, x="Status operation", y="Nombre", color="Target",
                 barmode="group", color_discrete_map=PALETTE_TARGET
             )
-            fig_statut.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=320, legend_title="")
-            st.plotly_chart(fig_statut, use_container_width=True)
+            fig_statut.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=300, legend_title="",
+                                      paper_bgcolor="white", plot_bgcolor="white")
+            st.plotly_chart(styliser_figure(fig_statut), use_container_width=True)
 
 
 # ==================================================
-# 6. PAGE — TRANSACTION UNIQUE
+# 7. ONGLET — TRANSACTION UNIQUE
 # ==================================================
 
-elif page == "🔍 Transaction unique":
+with onglet_transaction:
 
-    st.title("🔍 Analyse d'une transaction")
-    st.caption("Renseignez les informations d'une transaction pour évaluer son niveau de risque.")
-
-    st.divider()
+    section_titre("🔍", "Analyse d'une transaction",
+                  "Renseignez les informations d'une transaction pour évaluer son niveau de risque")
 
     colonne1, colonne2 = st.columns(2)
 
@@ -472,10 +603,6 @@ elif page == "🔍 Transaction unique":
         heure_transaction = st.time_input(
             "Heure de la transaction", value=datetime.now().time(), key="heure_transaction"
         )
-        #st.caption(
-        #    "ℹ️ L'heure exacte a été encodée comme catégorie pendant l'entraînement : "
-        #    "une heure inédite est traitée comme valeur inconnue par le modèle."
-        #)
 
     if st.button("Analyser la transaction", type="primary", use_container_width=True):
 
@@ -490,7 +617,7 @@ elif page == "🔍 Transaction unique":
         resultats = dict(zip(classes, probabilites[0]))
 
         st.divider()
-        st.subheader("Résultat de l'analyse")
+        section_titre("📋", "Résultat de l'analyse")
 
         col_verdict, col_jauge = st.columns([1, 1])
 
@@ -513,11 +640,12 @@ elif page == "🔍 Transaction unique":
                 color=list(resultats.keys()), color_discrete_map=PALETTE_TARGET,
                 labels={"x": "", "y": "Probabilité"}
             )
-            fig_barres.update_layout(showlegend=False, height=260, margin=dict(l=10, r=10, t=10, b=10), yaxis_tickformat=".0%")
-            st.plotly_chart(fig_barres, use_container_width=True)
+            fig_barres.update_layout(showlegend=False, height=260, margin=dict(l=10, r=10, t=10, b=10),
+                                      yaxis_tickformat=".0%", paper_bgcolor="white", plot_bgcolor="white")
+            st.plotly_chart(styliser_figure(fig_barres), use_container_width=True)
 
         with col_jauge:
-            st.plotly_chart(jauge_risque(resultats.get("Fraude", 0)), use_container_width=True)
+            st.plotly_chart(styliser_figure(jauge_risque(resultats.get("Fraude", 0))), use_container_width=True)
 
             st.markdown("##### Récapitulatif de la transaction")
             st.table(pd.DataFrame({
@@ -529,16 +657,13 @@ elif page == "🔍 Transaction unique":
 
 
 # ==================================================
-# 7. PAGE — FICHIER CSV
+# 8. ONGLET — FICHIER CSV
 # ==================================================
 
-elif page == "📁 Fichier CSV":
+with onglet_csv:
 
-    st.title("📁 Analyse d'un fichier CSV")
-    st.write(
-        "Chargez un fichier contenant plusieurs transactions. "
-        "Le fichier doit utiliser la même structure que le jeu de données d'entraînement."
-    )
+    section_titre("📁", "Analyse d'un fichier CSV",
+                  "Chargez un fichier contenant plusieurs transactions, avec la même structure que le jeu d'entraînement")
 
     fichier = st.file_uploader("Sélectionnez un fichier CSV", type=["csv"], key="fichier_csv")
 
@@ -548,7 +673,7 @@ elif page == "📁 Fichier CSV":
             df_original = pd.read_csv(fichier, sep=None, engine="python", encoding="utf-8")
 
             st.success(f"Fichier chargé : {len(df_original)} transaction(s).")
-            st.write("### Aperçu du fichier")
+            st.markdown("**Aperçu du fichier**")
             st.dataframe(df_original.head(10), use_container_width=True)
 
             colonnes_obligatoires = [
@@ -574,34 +699,40 @@ elif page == "📁 Fichier CSV":
                         resultats_csv[f"Probabilité {classe}"] = probabilites[:, position]
 
                     st.divider()
-                    st.subheader("Résultats de l'analyse")
+                    section_titre("📋", "Résultats de l'analyse")
 
                     nombre_normal = (predictions == "Normal").sum()
                     nombre_suspect = (predictions == "Suspect").sum()
                     nombre_fraude = (predictions == "Fraude").sum()
 
                     c1, c2, c3, c4 = st.columns(4)
-                    carte_kpi(c1, "Transactions analysées", f"{len(df_original):,}".replace(",", " "))
-                    carte_kpi(c2, "Normales", f"{nombre_normal:,}".replace(",", " "), couleur=COULEUR_NORMAL)
-                    carte_kpi(c3, "Suspectes", f"{nombre_suspect:,}".replace(",", " "), couleur=COULEUR_SUSPECT)
-                    carte_kpi(c4, "Fraudes détectées", f"{nombre_fraude:,}".replace(",", " "), couleur=COULEUR_FRAUDE)
+                    carte_kpi(c1, "Transactions analysées", f"{len(df_original):,}".replace(",", " "),
+                              icone="📄", couleur_icone="#E9EEFB")
+                    carte_kpi(c2, "Normales", f"{nombre_normal:,}".replace(",", " "),
+                              couleur=COULEUR_NORMAL, icone="✅", couleur_icone="#E7F7F3")
+                    carte_kpi(c3, "Suspectes", f"{nombre_suspect:,}".replace(",", " "),
+                              couleur=COULEUR_SUSPECT, icone="⏳", couleur_icone="#FDF3E7")
+                    carte_kpi(c4, "Fraudes détectées", f"{nombre_fraude:,}".replace(",", " "),
+                              couleur=COULEUR_FRAUDE, icone="⚠️", couleur_icone="#FDECEC")
 
                     st.write("")
 
                     col_a, col_b = st.columns([1, 1.5])
 
                     with col_a:
+                        section_titre("🥯", "Répartition des classes")
                         repartition = pd.Series(predictions).value_counts().reset_index()
                         repartition.columns = ["Classe", "Nombre"]
                         fig_pie = px.pie(
                             repartition, names="Classe", values="Nombre", hole=0.55,
                             color="Classe", color_discrete_map=PALETTE_TARGET
                         )
-                        fig_pie.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=320)
-                        st.plotly_chart(fig_pie, use_container_width=True)
+                        fig_pie.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=300,
+                                               paper_bgcolor="white")
+                        st.plotly_chart(styliser_figure(fig_pie), use_container_width=True)
 
                     with col_b:
-                        st.markdown("##### Transactions les plus à risque")
+                        section_titre("🚨", "Transactions les plus à risque")
                         top_risque = resultats_csv.sort_values("Probabilité Fraude", ascending=False).head(8)
                         st.dataframe(
                             top_risque[["Localisation", "Type de transaction", "Montant",
@@ -629,40 +760,37 @@ elif page == "📁 Fichier CSV":
 
 
 # ==================================================
-# 8. PAGE — PERFORMANCE DU MODÈLE
+# 9. ONGLET — PERFORMANCE DU MODÈLE
 # ==================================================
 
-else:
+with onglet_perf:
 
-    st.title("🧪 Performance du modèle")
-    st.caption("Métriques mesurées sur le jeu de test lors de l'entraînement (Random Forest optimisé).")
-
-    st.divider()
+    section_titre("🧪", "Performance du modèle",
+                  "Métriques mesurées sur le jeu de test lors de l'entraînement (Random Forest optimisé)")
 
     c1, c2, c3, c4 = st.columns(4)
-    carte_kpi(c1, "Accuracy", f"{METRIQUES_MODELE['accuracy']:.1%}")
-    carte_kpi(c2, "Precision", f"{METRIQUES_MODELE['precision']:.1%}")
-    carte_kpi(c3, "Recall", f"{METRIQUES_MODELE['recall']:.1%}")
-    carte_kpi(c4, "F1-score", f"{METRIQUES_MODELE['f1']:.1%}")
+    carte_kpi(c1, "Accuracy", f"{METRIQUES_MODELE['accuracy']:.1%}", icone="🎯", couleur_icone="#E9EEFB")
+    carte_kpi(c2, "Precision", f"{METRIQUES_MODELE['precision']:.1%}", icone="📐", couleur_icone="#F1EAFB")
+    carte_kpi(c3, "Recall", f"{METRIQUES_MODELE['recall']:.1%}", icone="🔁", couleur_icone="#E7F7F3")
+    carte_kpi(c4, "F1-score", f"{METRIQUES_MODELE['f1']:.1%}", icone="⭐", couleur_icone="#FDF3E7")
 
-    st.write("")
     st.write("")
 
     col_gauche, col_droite = st.columns([1.2, 1])
 
     with col_gauche:
-        st.subheader("Matrice de confusion")
+        section_titre("🔢", "Matrice de confusion")
         mc = METRIQUES_MODELE["matrice_confusion"]
         fig_mc = px.imshow(
             mc["valeurs"], x=mc["labels"], y=mc["labels"],
             text_auto=True, color_continuous_scale="Blues",
             labels=dict(x="Prédit", y="Réel", color="Nombre")
         )
-        fig_mc.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=380)
-        st.plotly_chart(fig_mc, use_container_width=True)
+        fig_mc.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=360, paper_bgcolor="white")
+        st.plotly_chart(styliser_figure(fig_mc), use_container_width=True)
 
     with col_droite:
-        st.subheader("Précision / Rappel / F1 par classe")
+        section_titre("📊", "Précision / Rappel / F1 par classe")
         df_par_classe = pd.DataFrame(METRIQUES_MODELE["par_classe"]).T.reset_index()
         df_par_classe.columns = ["Classe", "Precision", "Recall", "F1", "Support"]
         df_long = df_par_classe.melt(
@@ -673,8 +801,9 @@ else:
             df_long, x="Classe", y="Valeur", color="Métrique", barmode="group",
             color_discrete_sequence=[COULEUR_PRIMAIRE, "#4A6FA5", COULEUR_FRAUDE]
         )
-        fig_classe.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=380, yaxis_tickformat=".0%")
-        st.plotly_chart(fig_classe, use_container_width=True)
+        fig_classe.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=360, yaxis_tickformat=".0%",
+                                  paper_bgcolor="white", plot_bgcolor="white")
+        st.plotly_chart(styliser_figure(fig_classe), use_container_width=True)
 
     st.write("")
     st.markdown("##### Détail par classe")
@@ -685,7 +814,7 @@ else:
 
     # ---------- Importance des variables ----------
     st.write("")
-    st.subheader("Importance des variables")
+    section_titre("🌳", "Importance des variables")
     try:
         importances = pd.DataFrame({
             "Variable": feature_columns,
@@ -696,14 +825,15 @@ else:
             importances, x="Importance", y="Variable", orientation="h",
             color_discrete_sequence=[COULEUR_PRIMAIRE]
         )
-        fig_imp.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=420)
-        st.plotly_chart(fig_imp, use_container_width=True)
+        fig_imp.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=420,
+                               paper_bgcolor="white", plot_bgcolor="white")
+        st.plotly_chart(styliser_figure(fig_imp), use_container_width=True)
 
     except Exception:
         st.info("Importance des variables non disponible pour ce modèle.")
 
-    st.caption(
-        "ℹ️ Ces métriques sont figées au moment de l'entraînement. "
-        "Pour les recalculer automatiquement, sauvegardez-les dans un fichier "
-        "(ex. `model/metrics.json`) lors de l'entraînement et chargez-les ici."
-    )
+    #st.caption(
+    #    "ℹ️ Ces métriques sont figées au moment de l'entraînement. "
+    #    "Pour les recalculer automatiquement, sauvegardez-les dans un fichier "
+    #    "(ex. `model/metrics.json`) lors de l'entraînement et chargez-les ici."
+    #)
